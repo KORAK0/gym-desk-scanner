@@ -195,31 +195,46 @@
       lookupMember(val);
     }
 
-    function lookupMember(rawQuery) {
-      const resultArea = document.getElementById('result-area');
-      resultArea.innerHTML = '<div class="panel" style="text-align:center;color:#475569;font-size:13.5px;">Checking member status...</div>';
-
-      const cbName = 'gymPassCb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-      const oldScript = document.getElementById('jsonp-loader');
-      if (oldScript) oldScript.remove();
-
-      window[cbName] = function(data) {
-        delete window[cbName];
-        const s = document.getElementById('jsonp-loader');
-        if (s) s.remove();
-        renderResult(data);
-      };
-
-      const script = document.createElement('script');
-      script.id = 'jsonp-loader';
-      script.src = WEB_APP_URL + '?format=json&q=' + encodeURIComponent(rawQuery) + '&callback=' + encodeURIComponent(cbName);
-      script.onerror = function() {
-        delete window[cbName];
-        resultArea.innerHTML = '<div class="panel" style="color:#991b1b;font-size:13.5px;">Network error while connecting to verification service.</div>';
-      };
-      document.body.appendChild(script);
+    function extractClientQuery(raw) {
+  const text = String(raw || '').trim();
+  const match = text.match(/[?&]id=([^&#]+)/i);
+  if (match && match[1]) {
+    try {
+      return decodeURIComponent(match[1]).trim();
+    } catch (e) {
+      return match[1].trim();
     }
+  }
+  return text;
+}
 
+function lookupMember(rawQuery) {
+  const cleanQuery = extractClientQuery(rawQuery);
+  const resultArea = document.getElementById('result-area');
+  resultArea.innerHTML = '<div class="panel" style="text-align:center;color:#475569;font-size:13.5px;">Checking member status...</div>';
+
+  const cbName = 'gymPassCb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+  const oldScript = document.getElementById('jsonp-loader');
+  if (oldScript) oldScript.remove();
+
+  window[cbName] = function(data) {
+    delete window[cbName];
+    const s = document.getElementById('jsonp-loader');
+    if (s) s.remove();
+    renderResult(data);
+  };
+
+  const script = document.createElement('script');
+  script.id = 'jsonp-loader';
+  script.src = WEB_APP_URL + '?format=json&q=' + encodeURIComponent(cleanQuery) + '&callback=' + encodeURIComponent(cbName);
+  script.onerror = function() {
+    delete window[cbName];
+    const s = document.getElementById('jsonp-loader');
+    if (s) s.remove();
+    resultArea.innerHTML = '<div class="panel" style="color:#991b1b;font-size:13.5px;">Network error while connecting to verification service.</div>';
+  };
+  document.body.appendChild(script);
+}
     function renderResult(info) {
       const area = document.getElementById('result-area');
       if (!info || !info.found) {
